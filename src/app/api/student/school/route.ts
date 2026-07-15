@@ -12,7 +12,7 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: "School ID is required" }, { status: 400 });
     }
 
-    const school = await prisma.school.findUnique({
+    const school = await db.findOne({
       where: { id: schoolId },
       select: { name: true },
     });

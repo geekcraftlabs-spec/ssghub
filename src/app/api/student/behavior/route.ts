@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import prisma from "@/lib/prisma";
+import db from "@/lib/db";
 import { auth } from "@/auth";
 
 export const dynamic = 'force-dynamic';
@@ -12,7 +12,7 @@ export async function GET() {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const behaviorReports = await prisma.behaviorReport.findMany({
+    const behaviorReports = await db.findMany({
       where: { 
         studentId: session.user.id 
       },

@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import prisma from "@/lib/prisma";
+import db from "@/lib/db";
 import { auth } from "@/auth";
 
 export const dynamic = 'force-dynamic';
@@ -19,7 +19,7 @@ export async function GET() {
       return NextResponse.json([]);
     }
 
-    const materials = await prisma.material.findMany({
+    const materials = await db.findMany({
       where: { 
         grade: studentGrade 
       },

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
-import prisma from "@/lib/prisma";
+import db from "@/lib/db";
 
 export const dynamic = 'force-dynamic';
 
@@ -25,7 +25,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const behavior = await prisma.behaviorReport.create({
+    const behavior = await db.create({
       data: {
         date: new Date(date),
         description: description.trim(),

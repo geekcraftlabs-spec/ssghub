@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
-import prisma from "@/lib/prisma";
+import db from "@/lib/db";
 import { uploadToSupabase } from "@/lib/supabase";
 
 export const dynamic = 'force-dynamic';
@@ -34,7 +34,7 @@ export async function POST(request: Request) {
     const fileName = `materials/${grade}/${subject}/${Date.now()}-${file.name.replace(/\s+/g, "-")}`;
     const fileUrl = await uploadToSupabase(file, fileName);
 
-    const material = await prisma.material.create({
+    const material = await db.create({
       data: {
         grade,
         subject,

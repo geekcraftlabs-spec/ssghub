@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import prisma from '@/lib/prisma';
+import db from "@/lib/db";
 import { resend } from '@/lib/resend';
 import bcrypt from 'bcryptjs';
 
@@ -30,25 +30,21 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
     }
 
-    const existingStudent = await prisma.user.findUnique({
-      where: { email: email },
-    });
-
+    // Check if student exists
+    const existingStudent = await db.findOne("users", { email: email });
     if (existingStudent) {
       return NextResponse.json({ error: "Student email already registered" }, { status: 400 });
     }
 
-    const existingParent = await prisma.user.findUnique({
-      where: { email: parentEmail },
-    });
-
+    // Check if parent exists
+    const existingParent = await db.findOne("users", { email: parentEmail });
     if (existingParent) {
       return NextResponse.json({ error: "Parent email already registered" }, { status: 400 });
     }
 
-    const school = await prisma.school.findFirst({
-      where: { name: { contains: "Sandton" } }
-    });
+    // Find school
+    const schools = await db.findMany("schools", {});
+    const school = schools.find((s: any) => s.name && s.name.includes("Sandton"));
 
     if (!school) {
       return NextResponse.json({ error: "School not found" }, { status: 404 });
@@ -60,61 +56,63 @@ export async function POST(request: Request) {
     const hashedStudentPassword = await bcrypt.hash(studentPassword, 10);
     const hashedParentPassword = await bcrypt.hash(parentPassword, 10);
 
-    await prisma.user.create({
-      data: {
-        email: email,
-        password: hashedStudentPassword,
-        fullName: fullName,
-        role: 'STUDENT',
-        grade: grade,
-        schoolId: school.id,
-      },
+    // Create student
+    await db.create("users", {
+      email: email,
+      password: hashedStudentPassword,
+      full_name: fullName,
+      role: 'STUDENT',
+      grade: grade,
+      school_id: school.id,
     });
 
-    await prisma.user.create({
-      data: {
-        email: parentEmail,
-        password: hashedParentPassword,
-        fullName: parentName,
-        role: 'PARENT',
-        schoolId: school.id,
-      },
+    // Create parent
+    await db.create("users", {
+      email: parentEmail,
+      password: hashedParentPassword,
+      full_name: parentName,
+      role: 'PARENT',
+      school_id: school.id,
     });
 
-    // Only send emails if Resend is available
+    // Send emails if Resend available
     if (resend) {
-      await resend.emails.send({
-        from: 'onboarding@resend.dev',
-        to: email,
-        subject: 'Welcome to Sandton School Platform',
-        html: `
-          <h1>Welcome to Sandton Group of Schools!</h1>
-          <p><strong>Your account has been created.</strong></p>
-          <p><strong>Login Details:</strong></p>
-          <ul>
-            <li><strong>Email:</strong> ${email}</li>
-            <li><strong>Password:</strong> ${studentPassword}</li>
-          </ul>
-          <p>Login here: <a href="${process.env.NEXT_PUBLIC_APP_URL || 'https://sandton-platform.vercel.app'}/login">School Platform</a></p>
-        `,
-      });
+      try {
+        await resend.emails.send({
+          from: 'onboarding@resend.dev',
+          to: email,
+          subject: 'Welcome to Sandton School Platform',
+          html: `
+            <h1>Welcome to Sandton Group of Schools!</h1>
+            <p><strong>Your account has been created.</strong></p>
+            <p><strong>Login Details:</strong></p>
+            <ul>
+              <li><strong>Email:</strong> ${email}</li>
+              <li><strong>Password:</strong> ${studentPassword}</li>
+            </ul>
+            <p>Login here: <a href="${process.env.NEXT_PUBLIC_APP_URL || 'https://sandton-platform.vercel.app'}/login">School Platform</a></p>
+          `,
+        });
 
-      await resend.emails.send({
-        from: 'onboarding@resend.dev',
-        to: parentEmail,
-        subject: 'Welcome to Sandton School Platform - Parent Access',
-        html: `
-          <h1>Welcome to Sandton Group of Schools!</h1>
-          <p><strong>Your parent account has been created.</strong></p>
-          <p><strong>Login Details:</strong></p>
-          <ul>
-            <li><strong>Email:</strong> ${parentEmail}</li>
-            <li><strong>Password:</strong> ${parentPassword}</li>
-          </ul>
-          <p><strong>Your child:</strong> ${fullName} (${grade})</p>
-          <p>Login here: <a href="${process.env.NEXT_PUBLIC_APP_URL || 'https://sandton-platform.vercel.app'}/login">School Platform</a></p>
-        `,
-      });
+        await resend.emails.send({
+          from: 'onboarding@resend.dev',
+          to: parentEmail,
+          subject: 'Welcome to Sandton School Platform - Parent Access',
+          html: `
+            <h1>Welcome to Sandton Group of Schools!</h1>
+            <p><strong>Your parent account has been created.</strong></p>
+            <p><strong>Login Details:</strong></p>
+            <ul>
+              <li><strong>Email:</strong> ${parentEmail}</li>
+              <li><strong>Password:</strong> ${parentPassword}</li>
+            </ul>
+            <p><strong>Your child:</strong> ${fullName} (${grade})</p>
+            <p>Login here: <a href="${process.env.NEXT_PUBLIC_APP_URL || 'https://sandton-platform.vercel.app'}/login">School Platform</a></p>
+          `,
+        });
+      } catch (emailError) {
+        console.log('Email sending failed but accounts were created');
+      }
     }
 
     return NextResponse.json({

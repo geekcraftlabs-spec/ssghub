@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import prisma from "@/lib/prisma";
+import db from "@/lib/db";
 
 export const dynamic = 'force-dynamic';
 
@@ -12,19 +12,9 @@ export async function GET(request: Request) {
   }
 
   try {
-    const students = await prisma.user.findMany({
-      where: {
-        schoolId,
-        role: "STUDENT",
-      },
-      select: {
-        id: true,
-        fullName: true,
-        grade: true,
-      },
-      orderBy: {
-        fullName: "asc",
-      },
+    const students = await db.findMany("users", { 
+      school_id: schoolId,
+      role: "STUDENT"
     });
 
     return NextResponse.json(students);
