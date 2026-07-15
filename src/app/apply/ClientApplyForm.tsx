@@ -34,27 +34,18 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
-// Updated schema
 const formSchema = z.object({
   fullName: z.string().min(2, "Full name is required"),
   dateOfBirth: z.string().min(1, "Date of birth is required"),
   grade: z.string().min(1, "Grade is required"),
-  previousSchool: z.string().optional(),
   parentName: z.string().min(2, "Parent/Guardian name is required"),
   parentPhone: z.string().min(9, "Valid phone number is required"),
-  parentEmail: z.string().email("Valid parent email is required"),   // NEW - for notifications
+  parentEmail: z.string().email("Valid parent email is required"),
   address: z.string().min(5, "Address is required"),
-  email: z.string().email("Valid student email is required"),        // Student login email
-  province: z.string().min(1, "Province is required"),
-  school: z.string().min(1, "School is required"),
+  email: z.string().email("Valid student email is required"),
 });
 
-interface ClientApplyFormProps {
-  provinces: { id: string; name: string }[];
-  allSchools: { id: string; name: string; provinceId: string }[];
-}
-
-export default function ClientApplyForm({ provinces, allSchools }: ClientApplyFormProps) {
+export default function ClientApplyForm() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
 
@@ -64,22 +55,13 @@ export default function ClientApplyForm({ provinces, allSchools }: ClientApplyFo
       fullName: "",
       dateOfBirth: "",
       grade: "",
-      previousSchool: "",
       parentName: "",
       parentPhone: "",
       parentEmail: "",
       address: "",
       email: "",
-      province: "",
-      school: "",
     },
   });
-
-  const selectedProvince = form.watch("province");
-
-  const filteredSchools = selectedProvince
-    ? allSchools.filter((s) => s.provinceId === selectedProvince)
-    : [];
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setLoading(true);
@@ -90,17 +72,20 @@ export default function ClientApplyForm({ provinces, allSchools }: ClientApplyFo
         body: JSON.stringify(values),
       });
 
-      if (!response.ok) throw new Error('Server error');
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Server error');
+      }
 
-      toast.success("Application Submitted!", {
-        description: "The school admin will review it and send login details.",
+      toast.success("Registration Successful!", {
+        description: "Your accounts have been created. Check your email for login details.",
       });
 
       form.reset();
-      setTimeout(() => router.push('/'), 2000);
+      setTimeout(() => router.push('/login'), 3000);
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : "Please try again.";
-      toast.error("Failed to submit", { description: errorMessage });
+      toast.error("Registration Failed", { description: errorMessage });
     } finally {
       setLoading(false);
     }
@@ -110,9 +95,9 @@ export default function ClientApplyForm({ provinces, allSchools }: ClientApplyFo
     <div className="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-3xl mx-auto">
         <div className="flex justify-between items-center mb-8">
-          <h1 className="text-3xl font-bold text-primary">School Application Form</h1>
-          <Link 
-            href="/" 
+          <h1 className="text-3xl font-bold text-[#1a365d]">Sandton School Registration</h1>
+          <Link
+            href="/"
             className="text-blue-600 hover:text-blue-800 underline flex items-center gap-1"
           >
             ← Return to Home
@@ -121,9 +106,9 @@ export default function ClientApplyForm({ provinces, allSchools }: ClientApplyFo
 
         <Card className="shadow-xl border-none">
           <CardHeader className="text-center">
-            <CardTitle className="text-3xl font-bold">Apply to a School</CardTitle>
+            <CardTitle className="text-3xl font-bold">Register for School Platform</CardTitle>
             <CardDescription className="text-lg mt-2">
-              Please fill in the details below. The school admin will review your application.
+              Create accounts for both parent and student.
             </CardDescription>
           </CardHeader>
 
@@ -168,7 +153,7 @@ export default function ClientApplyForm({ provinces, allSchools }: ClientApplyFo
                     name="grade"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Grade Applying For</FormLabel>
+                        <FormLabel>Grade</FormLabel>
                         <Select onValueChange={field.onChange} defaultValue={field.value}>
                           <FormControl>
                             <SelectTrigger>
@@ -176,12 +161,18 @@ export default function ClientApplyForm({ provinces, allSchools }: ClientApplyFo
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            <SelectItem value="Grade R">Grade R</SelectItem>
                             <SelectItem value="Grade 1">Grade 1</SelectItem>
+                            <SelectItem value="Grade 2">Grade 2</SelectItem>
+                            <SelectItem value="Grade 3">Grade 3</SelectItem>
+                            <SelectItem value="Grade 4">Grade 4</SelectItem>
+                            <SelectItem value="Grade 5">Grade 5</SelectItem>
+                            <SelectItem value="Grade 6">Grade 6</SelectItem>
                             <SelectItem value="Grade 7">Grade 7</SelectItem>
-                            <SelectItem value="Form 1">Form 1</SelectItem>
-                            <SelectItem value="Form 4">Form 4</SelectItem>
-                            <SelectItem value="Form 6">Form 6</SelectItem>
+                            <SelectItem value="Grade 8">Grade 8</SelectItem>
+                            <SelectItem value="Grade 9">Grade 9</SelectItem>
+                            <SelectItem value="Grade 10">Grade 10</SelectItem>
+                            <SelectItem value="Grade 11">Grade 11</SelectItem>
+                            <SelectItem value="Grade 12">Grade 12</SelectItem>
                           </SelectContent>
                         </Select>
                         <FormMessage />
@@ -194,9 +185,9 @@ export default function ClientApplyForm({ provinces, allSchools }: ClientApplyFo
                     name="email"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Student Email (will be used for login)</FormLabel>
+                        <FormLabel>Student Email</FormLabel>
                         <FormControl>
-                          <Input type="email" placeholder="student@example.com" {...field} />
+                          <Input type="email" placeholder="student@ssg.net" {...field} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -229,7 +220,7 @@ export default function ClientApplyForm({ provinces, allSchools }: ClientApplyFo
                         <FormItem>
                           <FormLabel>Parent/Guardian Phone</FormLabel>
                           <FormControl>
-                            <Input placeholder="0771234567" {...field} />
+                            <Input placeholder="0821234567" {...field} />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -242,7 +233,7 @@ export default function ClientApplyForm({ provinces, allSchools }: ClientApplyFo
                     name="parentEmail"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Parent/Guardian Email (for notifications)</FormLabel>
+                        <FormLabel>Parent/Guardian Email</FormLabel>
                         <FormControl>
                           <Input type="email" placeholder="parent@example.com" {...field} />
                         </FormControl>
@@ -252,82 +243,24 @@ export default function ClientApplyForm({ provinces, allSchools }: ClientApplyFo
                   />
                 </div>
 
-                {/* Address & School */}
-                <div className="space-y-4">
-                  <FormField
-                    control={form.control}
-                    name="address"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Address</FormLabel>
-                        <FormControl>
-                          <Input placeholder="123 Main Street, Harare" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <FormField
-                      control={form.control}
-                      name="province"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Province</FormLabel>
-                          <Select onValueChange={field.onChange} defaultValue={field.value}>
-                            <FormControl>
-                              <SelectTrigger>
-                                <SelectValue placeholder="Select province" />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              {provinces.map((p) => (
-                                <SelectItem key={p.id} value={p.id}>
-                                  {p.name}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <FormField
-                      control={form.control}
-                      name="school"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Preferred School</FormLabel>
-                          <Select
-                            onValueChange={field.onChange}
-                            defaultValue={field.value}
-                            disabled={!selectedProvince}
-                          >
-                            <FormControl>
-                              <SelectTrigger>
-                                <SelectValue placeholder="Select school" />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              {filteredSchools.map((s) => (
-                                <SelectItem key={s.id} value={s.id}>
-                                  {s.name}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
-                </div>
+                {/* Address */}
+                <FormField
+                  control={form.control}
+                  name="address"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Address</FormLabel>
+                      <FormControl>
+                        <Input placeholder="123 Main Street, Sandton" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
 
                 <CardFooter className="flex justify-center pt-6">
-                  <Button type="submit" className="w-full md:w-auto px-12" disabled={loading}>
-                    {loading ? "Submitting..." : "Submit Application"}
+                  <Button type="submit" className="w-full md:w-auto px-12 bg-[#1a365d] hover:bg-[#2b6cb0]" disabled={loading}>
+                    {loading ? "Registering..." : "Register Now"}
                   </Button>
                 </CardFooter>
               </form>

@@ -6,7 +6,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { Loader2 } from "lucide-react";
+import { Loader2, BookOpen, FileText, AlertTriangle, Search } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Input } from "@/components/ui/input";
 
 type Report = {
   id: string;
@@ -42,6 +44,14 @@ type InitialSession = {
   };
 } | null;
 
+// Define grade levels for filtering
+const GRADE_LEVELS = {
+  PRIMARY: ["Grade 1", "Grade 2", "Grade 3", "Grade 4", "Grade 5", "Grade 6", "Grade 7"],
+  HIGH_SCHOOL: ["Grade 8", "Grade 9", "Grade 10", "Grade 11", "Grade 12"],
+};
+
+const ALL_GRADES = [...GRADE_LEVELS.PRIMARY, ...GRADE_LEVELS.HIGH_SCHOOL];
+
 export default function StudentClient({
   initialSession,
   initialSchoolName,
@@ -57,6 +67,42 @@ export default function StudentClient({
   const [behaviorReports, setBehaviorReports] = useState<BehaviorReport[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // Filter states
+  const [selectedLevel, setSelectedLevel] = useState<string>("all");
+  const [selectedGrade, setSelectedGrade] = useState<string>("all");
+  const [selectedSubject, setSelectedSubject] = useState<string>("all");
+  const [searchQuery, setSearchQuery] = useState<string>("");
+
+  // Get unique subjects from materials
+  const subjects = [...new Set(materials.map(m => m.subject))].sort();
+
+  // Filter materials
+  const filteredMaterials = materials.filter(material => {
+    // Level filter
+    if (selectedLevel !== "all") {
+      const isPrimary = GRADE_LEVELS.PRIMARY.includes(material.grade);
+      const isHighSchool = GRADE_LEVELS.HIGH_SCHOOL.includes(material.grade);
+      if (selectedLevel === "primary" && !isPrimary) return false;
+      if (selectedLevel === "highschool" && !isHighSchool) return false;
+    }
+
+    // Grade filter
+    if (selectedGrade !== "all" && material.grade !== selectedGrade) return false;
+
+    // Subject filter
+    if (selectedSubject !== "all" && material.subject !== selectedSubject) return false;
+
+    // Search filter
+    if (searchQuery) {
+      const query = searchQuery.toLowerCase();
+      return material.title.toLowerCase().includes(query) ||
+             material.subject.toLowerCase().includes(query) ||
+             material.grade.toLowerCase().includes(query);
+    }
+
+    return true;
+  });
 
   const fetchAllData = useCallback(async () => {
     try {
@@ -90,10 +136,10 @@ export default function StudentClient({
   }, []);
 
   useEffect(() => {
-    if (status === "authenticated") {
+    if (status === "authenticated" && session?.user?.id) {
       fetchAllData();
     }
-  }, [status, fetchAllData]);
+  }, [status, session?.user?.id, fetchAllData]);
 
   const currentSession = session || initialSession;
   const studentName = currentSession?.user?.fullName || 
@@ -141,35 +187,142 @@ export default function StudentClient({
           </CardHeader>
 
           <CardContent className="p-5 md:p-8">
-            <Tabs defaultValue="reports" className="w-full">
-              {/* MASSIVE spacing for mobile vertical tabs */}
+            <Tabs defaultValue="subjects" className="w-full">
               <TabsList className="grid w-full grid-cols-1 sm:grid-cols-3 mb-32 md:mb-12 gap-4 p-5 bg-muted/50 rounded-3xl">
-                <TabsTrigger 
-                  value="reports" 
-                  className="text-base py-7 data-[state=active]:bg-white data-[state=active]:shadow-sm font-medium"
-                >
-                  Report Cards
-                </TabsTrigger>
                 <TabsTrigger 
                   value="subjects" 
                   className="text-base py-7 data-[state=active]:bg-white data-[state=active]:shadow-sm font-medium"
                 >
+                  <BookOpen className="mr-2 h-5 w-5" />
                   Subjects & Materials
+                </TabsTrigger>
+                <TabsTrigger 
+                  value="reports" 
+                  className="text-base py-7 data-[state=active]:bg-white data-[state=active]:shadow-sm font-medium"
+                >
+                  <FileText className="mr-2 h-5 w-5" />
+                  Report Cards
                 </TabsTrigger>
                 <TabsTrigger 
                   value="behavior" 
                   className="text-base py-7 data-[state=active]:bg-white data-[state=active]:shadow-sm font-medium"
                 >
-                  Behavior Report
+                  <AlertTriangle className="mr-2 h-5 w-5" />
+                  Behavior
                 </TabsTrigger>
               </TabsList>
 
-              {/* Very strong content push on mobile */}
               <div className="pt-12 md:pt-4">
+                {/* SUBJECTS & MATERIALS TAB */}
+                <TabsContent value="subjects" className="mt-20 md:mt-8">
+                  <h3 className="text-xl mb-6">Learning Materials</h3>
+
+                  {/* Filter Bar */}
+                  <div className="bg-gray-50 p-4 rounded-xl mb-8 border border-gray-200">
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                      <div>
+                        <label className="text-sm font-medium mb-1 block">Level</label>
+                        <Select value={selectedLevel} onValueChange={setSelectedLevel}>
+                          <SelectTrigger>
+                            <SelectValue placeholder="All Levels" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="all">All Levels</SelectItem>
+                            <SelectItem value="primary">Primary School</SelectItem>
+                            <SelectItem value="highschool">High School</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div>
+                        <label className="text-sm font-medium mb-1 block">Grade</label>
+                        <Select value={selectedGrade} onValueChange={setSelectedGrade}>
+                          <SelectTrigger>
+                            <SelectValue placeholder="All Grades" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="all">All Grades</SelectItem>
+                            {ALL_GRADES.map(grade => (
+                              <SelectItem key={grade} value={grade}>{grade}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div>
+                        <label className="text-sm font-medium mb-1 block">Subject</label>
+                        <Select value={selectedSubject} onValueChange={setSelectedSubject}>
+                          <SelectTrigger>
+                            <SelectValue placeholder="All Subjects" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="all">All Subjects</SelectItem>
+                            {subjects.map(subject => (
+                              <SelectItem key={subject} value={subject}>{subject}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div>
+                        <label className="text-sm font-medium mb-1 block">Search</label>
+                        <div className="relative">
+                          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                          <Input
+                            placeholder="Search materials..."
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            className="pl-9"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Results count */}
+                  <p className="text-sm text-muted-foreground mb-4">
+                    Showing {filteredMaterials.length} of {materials.length} materials
+                  </p>
+
+                  {filteredMaterials.length > 0 ? (
+                    <div className="space-y-4">
+                      {filteredMaterials.map((material) => (
+                        <div key={material.id} className="p-5 border rounded-2xl hover:shadow-md transition">
+                          <div className="flex items-start justify-between">
+                            <div>
+                              <div className="font-medium text-lg">{material.title}</div>
+                              <div className="text-sm text-muted-foreground mt-1">
+                                {material.subject} • {material.grade}
+                              </div>
+                              <div className="text-xs text-muted-foreground mt-1">
+                                Uploaded: {new Date(material.uploadedAt).toLocaleDateString()}
+                              </div>
+                            </div>
+                            <a 
+                              href={material.fileUrl} 
+                              target="_blank" 
+                              rel="noopener noreferrer"
+                              className="text-blue-600 hover:underline inline-block text-sm whitespace-nowrap ml-4"
+                            >
+                              📄 Open PDF
+                            </a>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center py-20 text-muted-foreground border border-dashed rounded-2xl">
+                      <BookOpen className="h-12 w-12 mx-auto mb-4 text-gray-300" />
+                      No learning materials match your filters.
+                    </div>
+                  )}
+                </TabsContent>
+
+                {/* REPORT CARDS TAB */}
                 <TabsContent value="reports" className="mt-20 md:mt-8">
                   <h3 className="text-xl mb-8">Your Report Cards</h3>
                   {reports.length > 0 ? (
-                    <div className="space-y-5">
+                    <div className="space-y-4">
                       {reports.map((report) => (
                         <a 
                           key={report.id} 
@@ -178,7 +331,8 @@ export default function StudentClient({
                           rel="noopener noreferrer"
                           className="flex items-center gap-3 p-5 border rounded-xl hover:bg-gray-50 transition-colors"
                         >
-                          📄 <span className="font-medium">{report.title}</span>
+                          <FileText className="h-5 w-5 text-blue-600" />
+                          <span className="font-medium">{report.title}</span>
                           {report.term && <span className="text-sm text-muted-foreground ml-auto">({report.term})</span>}
                         </a>
                       ))}
@@ -190,42 +344,15 @@ export default function StudentClient({
                   )}
                 </TabsContent>
 
-                <TabsContent value="subjects" className="mt-20 md:mt-8">
-                  <h3 className="text-xl mb-8">Your Subjects & Materials</h3>
-                  {materials.length > 0 ? (
-                    <div className="space-y-8">
-                      {materials.map((material) => (
-                        <div key={material.id} className="p-7 border rounded-2xl">
-                          <div className="font-medium text-lg">{material.title}</div>
-                          <div className="text-sm text-muted-foreground mt-2">
-                            {material.subject} • Grade {material.grade}
-                          </div>
-                          <a 
-                            href={material.fileUrl} 
-                            target="_blank" 
-                            rel="noopener noreferrer"
-                            className="text-blue-600 hover:underline mt-6 inline-block text-base"
-                          >
-                            📝 Download PDF
-                          </a>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="text-center py-28 text-muted-foreground border border-dashed rounded-2xl">
-                      No learning materials available yet.
-                    </div>
-                  )}
-                </TabsContent>
-
+                {/* BEHAVIOR TAB */}
                 <TabsContent value="behavior" className="mt-20 md:mt-8">
-                  <h3 className="text-xl mb-8">Behavior Report</h3>
+                  <h3 className="text-xl mb-8">Behavior Reports</h3>
                   {behaviorReports.length > 0 ? (
                     <Accordion type="single" collapsible className="w-full">
                       {behaviorReports.map((item, index) => (
                         <AccordionItem key={index} value={`item-${index}`}>
                           <AccordionTrigger className="text-left">
-                            {item.date} — {item.severity || "General"}
+                            {new Date(item.date).toLocaleDateString()} — {item.severity || "General"}
                           </AccordionTrigger>
                           <AccordionContent className="pt-4 text-[15px]">{item.description}</AccordionContent>
                         </AccordionItem>

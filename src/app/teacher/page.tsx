@@ -6,7 +6,7 @@ import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Loader2, Users, FileText, AlertTriangle, Upload, BookOpen } from "lucide-react";
+import { Loader2, Users, FileText, AlertTriangle, Upload, BookOpen, Lock } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -24,9 +24,80 @@ type Student = {
   grade: string;
 };
 
+// Teacher Access Key Page
+function TeacherAccessPage({ onVerified }: { onVerified: () => void }) {
+  const [secretKey, setSecretKey] = useState("");
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setError("");
+
+    // For demo purposes - hardcoded key "SANDTON2026"
+    // In production, this would check against database
+    if (secretKey === "SANDTON2026") {
+      sessionStorage.setItem("teacherAccessKey", secretKey);
+      onVerified();
+    } else {
+      setError("Invalid access key. Please try again.");
+    }
+    setLoading(false);
+  };
+
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-gray-100">
+      <div className="bg-white p-8 rounded-lg shadow-md max-w-md w-full">
+        <div className="text-center mb-8">
+          <div className="flex justify-center mb-4">
+            <Lock className="h-16 w-16 text-[#1a365d]" />
+          </div>
+          <h1 className="text-2xl font-bold text-[#1a365d]">Teacher Portal Access</h1>
+          <p className="text-gray-600 mt-2">Enter this week&apos;s access key</p>
+          <p className="text-sm text-gray-500 mt-1">Demo key: <strong>SANDTON2026</strong></p>
+        </div>
+
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <input
+              type="password"
+              value={secretKey}
+              onChange={(e) => setSecretKey(e.target.value)}
+              placeholder="Enter weekly access key"
+              className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-[#1a365d] outline-none"
+              required
+            />
+          </div>
+
+          {error && (
+            <p className="text-red-500 text-sm">{error}</p>
+          )}
+
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full bg-[#1a365d] text-white p-3 rounded-lg hover:bg-[#2b6cb0] transition disabled:opacity-50"
+          >
+            {loading ? 'Verifying...' : 'Access Teacher Portal'}
+          </button>
+        </form>
+
+        <div className="mt-4 text-center">
+          <p className="text-xs text-gray-500">
+            Key changes weekly. Contact admin for new key.
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Main Teacher Dashboard
 export default function TeacherPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
+  const [isVerified, setIsVerified] = useState(false);
 
   const [schoolName, setSchoolName] = useState<string>("Loading school...");
   const [loadingSchool, setLoadingSchool] = useState(true);
@@ -41,88 +112,100 @@ export default function TeacherPage() {
   const [uploading, setUploading] = useState(false);
   const [reportFile, setReportFile] = useState<File | null>(null);
 
- useEffect(() => {
-  if (status === "loading") return;
-
-  const user = session?.user;
-
-  if (status === "unauthenticated" || !user?.schoolId || user.role !== "TEACHER") {
-    router.push("/login");
-    return;
-  }
-
-  const loadTeacherData = async () => {
-    try {
-      setLoadingSchool(true);
-
-      const schoolRes = await fetch(`/api/school/${user!.schoolId}`);
-      if (schoolRes.ok) {
-        const schoolData = await schoolRes.json();
-        setSchoolName(schoolData.name || "Your School");
-      }
-
-      const studentsRes = await fetch(`/api/teacher/students?schoolId=${user!.schoolId}`);
-      if (studentsRes.ok) {
-        const realStudents: Student[] = await studentsRes.json();
-        setStudents(realStudents);
-
-        const uniqueGrades = [...new Set(realStudents.map((s) => s.grade))].sort();
-        setGrades(uniqueGrades);
-
-        if (uniqueGrades.length > 0) {
-          setSelectedGrade(uniqueGrades[0]);
-          setMaterialGrade(uniqueGrades[0]);
-        }
-      }
-    } catch (error) {
-      console.error("Failed to load teacher data:", error);
-      setSchoolName("Error loading school");
-    } finally {
-      setLoadingSchool(false);
+  // Check for existing teacher access
+  useEffect(() => {
+    const hasAccess = sessionStorage.getItem("teacherAccessKey");
+    if (hasAccess === "SANDTON2026") {
+      setIsVerified(true);
     }
-  };
+  }, []);
 
-  loadTeacherData();
-}, [status, session, router]);
+  useEffect(() => {
+    if (status === "loading") return;
+
+    const user = session?.user;
+
+    if (status === "unauthenticated" || !user?.schoolId || user.role !== "TEACHER") {
+      router.push("/login");
+      return;
+    }
+
+    const loadTeacherData = async () => {
+      try {
+        setLoadingSchool(true);
+
+        const schoolRes = await fetch(`/api/school/${user!.schoolId}`);
+        if (schoolRes.ok) {
+          const schoolData = await schoolRes.json();
+          setSchoolName(schoolData.name || "Your School");
+        }
+
+        const studentsRes = await fetch(`/api/teacher/students?schoolId=${user!.schoolId}`);
+        if (studentsRes.ok) {
+          const realStudents: Student[] = await studentsRes.json();
+          setStudents(realStudents);
+
+          const uniqueGrades = [...new Set(realStudents.map((s) => s.grade))].sort();
+          setGrades(uniqueGrades);
+
+          if (uniqueGrades.length > 0) {
+            setSelectedGrade(uniqueGrades[0]);
+            setMaterialGrade(uniqueGrades[0]);
+          }
+        }
+      } catch (error) {
+        console.error("Failed to load teacher data:", error);
+        setSchoolName("Error loading school");
+      } finally {
+        setLoadingSchool(false);
+      }
+    };
+
+    loadTeacherData();
+  }, [status, session, router]);
 
   const filteredStudents = students.filter((s) => s.grade === selectedGrade);
   const selectedStudent = students.find((s) => s.id === selectedStudentId);
 
-  // ===================== UPLOAD HANDLERS =====================
-
-const handleReportUpload = async () => {
-  if (!reportFile || !selectedStudentId) {
-    alert("Please select a student and a PDF file");
-    return;
+  // If not verified, show access page
+  if (!isVerified) {
+    return <TeacherAccessPage onVerified={() => setIsVerified(true)} />;
   }
 
-  setUploading(true);
-  const formData = new FormData();
-  formData.append("file", reportFile);
-  formData.append("studentId", selectedStudentId);
-  formData.append("term", "Term 1");
-  formData.append("year", new Date().getFullYear().toString());
-  formData.append("title", `Report Card - ${new Date().toLocaleDateString()}`);
-
-  try {
-    const res = await fetch("/api/teacher/upload-report", {
-      method: "POST",
-      body: formData,
-    });
-
-    if (res.ok) {
-      alert(`✅ Report Card uploaded successfully`);
-      setReportFile(null);
-    } else {
-      const errorData = await res.json().catch(() => ({}));
-      alert(`Upload failed: ${errorData.error || "Unknown error"}`);
+  // Upload handlers
+  const handleReportUpload = async () => {
+    if (!reportFile || !selectedStudentId) {
+      alert("Please select a student and a PDF file");
+      return;
     }
-  } catch {
-    alert("Upload failed. Please check your connection.");
-  } finally {
-    setUploading(false);
-  }
-};
+
+    setUploading(true);
+    const formData = new FormData();
+    formData.append("file", reportFile);
+    formData.append("studentId", selectedStudentId);
+    formData.append("term", "Term 1");
+    formData.append("year", new Date().getFullYear().toString());
+    formData.append("title", `Report Card - ${new Date().toLocaleDateString()}`);
+
+    try {
+      const res = await fetch("/api/teacher/upload-report", {
+        method: "POST",
+        body: formData,
+      });
+
+      if (res.ok) {
+        alert("✅ Report Card uploaded successfully");
+        setReportFile(null);
+      } else {
+        const errorData = await res.json().catch(() => ({}));
+        alert(`Upload failed: ${errorData.error || "Unknown error"}`);
+      }
+    } catch {
+      alert("Upload failed. Please check your connection.");
+    } finally {
+      setUploading(false);
+    }
+  };
 
   const handleBehaviorSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -140,12 +223,7 @@ const handleReportUpload = async () => {
       const res = await fetch("/api/teacher/behavior", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ 
-          studentId: selectedStudentId, 
-          date, 
-          description, 
-          severity 
-        }),
+        body: JSON.stringify({ studentId: selectedStudentId, date, description, severity }),
       });
 
       if (res.ok) {
@@ -172,12 +250,12 @@ const handleReportUpload = async () => {
       return;
     }
 
-   setUploading(true);
-const formData = new FormData();
-formData.append("file", file);
-formData.append("grade", materialGrade);
-formData.append("subject", materialSubject);
-formData.append("title", materialTitle);
+    setUploading(true);
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("grade", materialGrade);
+    formData.append("subject", materialSubject);
+    formData.append("title", materialTitle);
 
     try {
       const res = await fetch("/api/teacher/upload-material", {
@@ -208,7 +286,6 @@ formData.append("title", materialTitle);
     );
   }
 
-  // safe session.user access
   const teacherName = session?.user?.fullName || "Educator";
 
   return (
@@ -218,14 +295,22 @@ formData.append("title", materialTitle);
           <div>
             <h1 className="text-3xl md:text-4xl font-bold text-primary">Teacher Portal</h1>
             <p className="text-muted-foreground text-lg mt-1">
-              Welcome, Educator of <span className="font-semibold text-foreground">{schoolName}</span>
+              Welcome, <span className="font-semibold text-foreground">{teacherName}</span>
             </p>
-            <p className="text-sm text-muted-foreground">Hello, {teacherName}</p>
+            <p className="text-sm text-muted-foreground">Teaching at {schoolName}</p>
           </div>
 
-          <Button variant="destructive" onClick={() => signOut({ callbackUrl: "/" })}>
-            Logout
-          </Button>
+          <div className="flex gap-3">
+            <Button variant="outline" onClick={() => {
+              sessionStorage.removeItem("teacherAccessKey");
+              setIsVerified(false);
+            }}>
+              Lock Portal
+            </Button>
+            <Button variant="destructive" onClick={() => signOut({ callbackUrl: "/" })}>
+              Logout
+            </Button>
+          </div>
         </div>
 
         {/* Grade → Student Management */}
@@ -291,15 +376,15 @@ formData.append("title", materialTitle);
                         <Upload className="h-5 w-5" /> Upload Report Card (PDF)
                       </h3>
                       <Input 
-                      type="file" 
-                      accept=".pdf" 
-                      onChange={(e) => setReportFile(e.target.files?.[0] || null)}
-                      disabled={uploading}
+                        type="file" 
+                        accept=".pdf" 
+                        onChange={(e) => setReportFile(e.target.files?.[0] || null)}
+                        disabled={uploading}
                       />
-                  <Button onClick={handleReportUpload} className="mt-4 w-full" disabled={uploading}>
-                      <Upload className="mr-2 h-4 w-4" />
-                      {uploading ? "Uploading..." : "Upload Report"}
-                  </Button>
+                      <Button onClick={handleReportUpload} className="mt-4 w-full" disabled={uploading}>
+                        <Upload className="mr-2 h-4 w-4" />
+                        {uploading ? "Uploading..." : "Upload Report"}
+                      </Button>
                       <p className="text-xs text-muted-foreground mt-3">
                         This will appear in both student and parent portals.
                       </p>

@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "@/components/ui/sonner";
-import { SessionProvider } from "next-auth/react"; // Add this import
+import { SessionProvider } from "next-auth/react";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -15,8 +15,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "RuzivoStas - Zimbabwe School Applications",
-  description: "Apply to schools easily and digitally",
+  title: "Sandton School Management",
+  description: "Complete school management platform for Sandton Group of Schools",
 };
 
 export default function RootLayout({

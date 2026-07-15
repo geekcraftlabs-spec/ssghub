@@ -72,10 +72,10 @@ export default function ParentClient({
   }, []);
 
   useEffect(() => {
-    if (status === "authenticated") {
+    if (status === "authenticated" && session?.user?.id) {
       fetchAllData();
     }
-  }, [status, fetchAllData]);
+  }, [status, session?.user?.id, fetchAllData]);
 
   const currentSession = session || initialSession;
   const studentName = currentSession?.user?.fullName || 
@@ -96,7 +96,6 @@ export default function ParentClient({
   return (
     <div className="min-h-screen bg-background p-4 md:p-8">
       <div className="mx-auto max-w-5xl">
-        {/* Header - Parent branding */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-12 gap-4">
           <div>
             <h1 className="text-3xl md:text-4xl font-bold text-primary">Parent Portal</h1>
@@ -126,7 +125,6 @@ export default function ParentClient({
 
           <CardContent className="p-5 md:p-8">
             <Tabs defaultValue="reports" className="w-full">
-              {/* Generous mobile spacing for 2 tabs */}
               <TabsList className="grid w-full grid-cols-1 sm:grid-cols-2 mb-20 md:mb-10 gap-4 p-4 bg-muted/50 rounded-3xl">
                 <TabsTrigger 
                   value="reports" 
@@ -146,7 +144,7 @@ export default function ParentClient({
                 <TabsContent value="reports" className="mt-16 md:mt-8">
                   <h3 className="text-xl mb-8">Report Cards</h3>
                   {reports.length > 0 ? (
-                    <div className="space-y-5">
+                    <div className="space-y-4">
                       {reports.map((report) => (
                         <a 
                           key={report.id} 
@@ -174,7 +172,7 @@ export default function ParentClient({
                       {behaviorReports.map((item, index) => (
                         <AccordionItem key={index} value={`item-${index}`}>
                           <AccordionTrigger className="text-left">
-                            {item.date} — {item.severity || "General"}
+                            {new Date(item.date).toLocaleDateString()} — {item.severity || "General"}
                           </AccordionTrigger>
                           <AccordionContent className="pt-4 text-[15px]">{item.description}</AccordionContent>
                         </AccordionItem>
