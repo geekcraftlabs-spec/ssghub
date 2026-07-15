@@ -1,0 +1,8 @@
+# Create .vercelignore
+@"
+prisma/*.ts
+prisma/*.js
+scripts/
+*.test.ts
+*.spec.ts
+"@ | Out-File -FilePath .vercelignore
