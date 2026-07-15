@@ -1,28 +1,18 @@
-// src/lib/prisma.ts
 import { PrismaClient } from '@prisma/client';
-import { PrismaPg } from '@prisma/adapter-pg';
 
-const prismaClientSingleton = () => {
-  const connectionString = process.env.DATABASE_URL;
-
-  if (!connectionString) {
-    throw new Error('DATABASE_URL is not set in .env');
-  }
-
-  const adapter = new PrismaPg({ connectionString });
-
-  return new PrismaClient({ adapter });
-};
-
-type PrismaSingleton = ReturnType<typeof prismaClientSingleton>;
-
+// Global prisma instance
 const globalForPrisma = globalThis as unknown as {
-  prisma: PrismaSingleton | undefined;
+  prisma: PrismaClient | undefined;
 };
 
-const prisma = globalForPrisma.prisma ?? prismaClientSingleton();
+// Only create PrismaClient if DATABASE_URL is set AND we're not in build
+const isBuild = process.env.NEXT_PHASE === 'phase-production-build' || 
+                process.env.VERCEL_ENV === 'preview' && !process.env.DATABASE_URL;
 
-if (process.env.NODE_ENV !== 'production') {
+export const prisma = globalForPrisma.prisma ?? 
+  (isBuild ? null as any : new PrismaClient());
+
+if (process.env.NODE_ENV !== 'production' && prisma) {
   globalForPrisma.prisma = prisma;
 }
 

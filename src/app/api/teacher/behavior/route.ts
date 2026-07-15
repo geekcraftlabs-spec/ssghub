@@ -2,16 +2,16 @@ import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import prisma from "@/lib/prisma";
 
+export const dynamic = 'force-dynamic';
+
 export async function POST(request: Request) {
   try {
     const session = await auth();
 
-    // 🔐 Auth check
     if (!session?.user || session.user.role !== "TEACHER") {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // 🚨 EXTRA SAFETY (prevents Prisma crash)
     if (!session.user.id) {
       return NextResponse.json({ error: "User ID missing in session" }, { status: 401 });
     }
@@ -39,12 +39,8 @@ export async function POST(request: Request) {
 
   } catch (error) {
     console.error("[Behavior Upload] Error:", error);
-
     return NextResponse.json(
-      {
-        error: "Failed to save behavior report",
-        details: error instanceof Error ? error.message : "Unknown error",
-      },
+      { error: "Failed to save behavior report" },
       { status: 500 }
     );
   }

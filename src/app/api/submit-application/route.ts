@@ -1,6 +1,9 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { resend } from '@/lib/resend';
+import bcrypt from 'bcryptjs';
+
+export const dynamic = 'force-dynamic';
 
 function generateReadablePassword(): string {
   const adjectives = ['Blue', 'Bright', 'Smart', 'Golden', 'Silver', 'Happy', 'Swift'];
@@ -15,26 +18,18 @@ export async function POST(request: Request) {
   try {
     const body = await request.json();
 
-    console.log("[API] Subscribe request received");
-    console.log("[API] Received body:", body);
-
     const {
       fullName,
-      // dateOfBirth - kept for future use but not currently used
       grade,
       parentName,
-      // parentPhone - kept for future use but not currently used
       parentEmail,
-      // address - kept for future use but not currently used
-      email, // student's email
+      email,
     } = body;
 
-    // Basic validation
     if (!fullName || !email || !parentName || !parentEmail || !grade) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
     }
 
-    // Check if student email already exists
     const existingStudent = await prisma.user.findUnique({
       where: { email: email },
     });
@@ -43,7 +38,6 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Student email already registered" }, { status: 400 });
     }
 
-    // Check if parent email already exists
     const existingParent = await prisma.user.findUnique({
       where: { email: parentEmail },
     });
@@ -52,7 +46,6 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Parent email already registered" }, { status: 400 });
     }
 
-    // Get Sandton school ID (hardcoded for now - you'll need to get the actual ID)
     const school = await prisma.school.findFirst({
       where: { name: { contains: "Sandton" } }
     });
@@ -61,61 +54,72 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "School not found" }, { status: 404 });
     }
 
-    // Generate passwords
     const studentPassword = generateReadablePassword();
     const parentPassword = generateReadablePassword();
 
-    // Hash passwords
+    const hashedStudentPassword = await bcrypt.hash(studentPassword, 10);
+    const hashedParentPassword = await bcrypt.hash(parentPassword, 10);
 
-    // Create student account
-
-    // Create parent account
-
-    console.log(`✅ Created student: ${email}`);
-    console.log(`✅ Created parent: ${parentEmail}`);
-
-    // Send welcome email to student
-    await resend.emails.send({
-      from: 'onboarding@resend.dev',
-      to: email,
-      subject: 'Welcome to Sandton School Platform',
-      html: `
-        <h1>Welcome to Sandton Group of Schools!</h1>
-        <p><strong>Your account has been created.</strong></p>
-        <p><strong>Login Details:</strong></p>
-        <ul>
-          <li><strong>Email:</strong> ${email}</li>
-          <li><strong>Password:</strong> ${studentPassword}</li>
-        </ul>
-        <p>Login here: <a href="${process.env.NEXT_PUBLIC_APP_URL || 'https://platform.sandtonschoolgroup.vercel.app'}">School Platform</a></p>
-      `,
+    await prisma.user.create({
+      data: {
+        email: email,
+        password: hashedStudentPassword,
+        fullName: fullName,
+        role: 'STUDENT',
+        grade: grade,
+        schoolId: school.id,
+      },
     });
 
-    // Send welcome email to parent
-    await resend.emails.send({
-      from: 'onboarding@resend.dev',
-      to: parentEmail,
-      subject: 'Welcome to Sandton School Platform - Parent Access',
-      html: `
-        <h1>Welcome to Sandton Group of Schools!</h1>
-        <p><strong>Your parent account has been created.</strong></p>
-        <p><strong>Login Details:</strong></p>
-        <ul>
-          <li><strong>Email:</strong> ${parentEmail}</li>
-          <li><strong>Password:</strong> ${parentPassword}</li>
-        </ul>
-        <p><strong>Your child:</strong> ${fullName} (${grade})</p>
-        <p>Login here: <a href="${process.env.NEXT_PUBLIC_APP_URL || 'https://platform.sandtonschoolgroup.vercel.app'}">School Platform</a></p>
-      `,
+    await prisma.user.create({
+      data: {
+        email: parentEmail,
+        password: hashedParentPassword,
+        fullName: parentName,
+        role: 'PARENT',
+        schoolId: school.id,
+      },
     });
 
-    console.log(`📧 Welcome emails sent to ${email} and ${parentEmail}`);
+    // Only send emails if Resend is available
+    if (resend) {
+      await resend.emails.send({
+        from: 'onboarding@resend.dev',
+        to: email,
+        subject: 'Welcome to Sandton School Platform',
+        html: `
+          <h1>Welcome to Sandton Group of Schools!</h1>
+          <p><strong>Your account has been created.</strong></p>
+          <p><strong>Login Details:</strong></p>
+          <ul>
+            <li><strong>Email:</strong> ${email}</li>
+            <li><strong>Password:</strong> ${studentPassword}</li>
+          </ul>
+          <p>Login here: <a href="${process.env.NEXT_PUBLIC_APP_URL || 'https://sandton-platform.vercel.app'}/login">School Platform</a></p>
+        `,
+      });
+
+      await resend.emails.send({
+        from: 'onboarding@resend.dev',
+        to: parentEmail,
+        subject: 'Welcome to Sandton School Platform - Parent Access',
+        html: `
+          <h1>Welcome to Sandton Group of Schools!</h1>
+          <p><strong>Your parent account has been created.</strong></p>
+          <p><strong>Login Details:</strong></p>
+          <ul>
+            <li><strong>Email:</strong> ${parentEmail}</li>
+            <li><strong>Password:</strong> ${parentPassword}</li>
+          </ul>
+          <p><strong>Your child:</strong> ${fullName} (${grade})</p>
+          <p>Login here: <a href="${process.env.NEXT_PUBLIC_APP_URL || 'https://sandton-platform.vercel.app'}/login">School Platform</a></p>
+        `,
+      });
+    }
 
     return NextResponse.json({
       success: true,
       message: "Accounts created successfully. Login credentials sent via email.",
-      student: { email, password: studentPassword },
-      parent: { email: parentEmail, password: parentPassword },
     });
 
   } catch (error: unknown) {

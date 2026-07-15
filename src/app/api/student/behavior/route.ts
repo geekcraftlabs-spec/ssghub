@@ -1,14 +1,14 @@
-// app/api/student/behavior/route.ts
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { auth } from "@/auth";
+
+export const dynamic = 'force-dynamic';
 
 export async function GET() {
   try {
     const session = await auth();
 
     if (!session?.user || session.user.role?.toUpperCase() !== "STUDENT") {
-      console.log("[Behavior API] Unauthorized - Role:", session?.user?.role || "none");
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -25,8 +25,6 @@ export async function GET() {
         uploadedAt: true 
       }
     });
-
-    console.log(`[Behavior API] ✅ Returned ${behaviorReports.length} behavior reports`);
 
     return NextResponse.json(behaviorReports);
   } catch (error) {

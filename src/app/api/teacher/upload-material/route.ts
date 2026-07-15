@@ -3,6 +3,8 @@ import { auth } from "@/auth";
 import prisma from "@/lib/prisma";
 import { uploadToSupabase } from "@/lib/supabase";
 
+export const dynamic = 'force-dynamic';
+
 export async function POST(request: Request) {
   try {
     const session = await auth();
@@ -46,11 +48,8 @@ export async function POST(request: Request) {
 
   } catch (error) {
     console.error("[Upload Material] Error:", error);
-
     return NextResponse.json(
-      {
-        error: error instanceof Error ? error.message : "Upload failed",
-      },
+      { error: error instanceof Error ? error.message : "Upload failed" },
       { status: 500 }
     );
   }

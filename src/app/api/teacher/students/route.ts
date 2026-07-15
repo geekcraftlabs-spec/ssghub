@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
-import prisma from "@/lib/prisma";   // Make sure this path is correct for your project
+import prisma from "@/lib/prisma";
+
+export const dynamic = 'force-dynamic';
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -18,7 +20,7 @@ export async function GET(request: Request) {
       select: {
         id: true,
         fullName: true,
-        grade: true,        // This should now work if "grade" exists in your Prisma schema
+        grade: true,
       },
       orderBy: {
         fullName: "asc",

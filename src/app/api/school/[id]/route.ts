@@ -1,13 +1,13 @@
-// src/app/api/school/[id]/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
+
+export const dynamic = 'force-dynamic';
 
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    // IMPORTANT: Await the params Promise (Next.js 16 requirement)
     const { id: schoolId } = await params;
 
     if (!schoolId) {
@@ -23,7 +23,6 @@ export async function GET(
     });
 
     if (!school) {
-      console.log(`School not found with ID: ${schoolId}`);
       return NextResponse.json({ error: "School not found" }, { status: 404 });
     }
 
