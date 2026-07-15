@@ -1,9 +1,7 @@
-// app/api/teacher/upload-report/route.ts
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import prisma from "@/lib/prisma";
 import { uploadToSupabase } from "@/lib/supabase";
-import type { Prisma } from "@prisma/client";
 
 export async function POST(request: Request) {
   try {
@@ -43,7 +41,7 @@ export async function POST(request: Request) {
         title,
         studentId,
         uploadedBy: session.user.id,
-      } as Prisma.ReportCardUncheckedCreateInput,
+      },
     });
 
     return NextResponse.json({ success: true, report });

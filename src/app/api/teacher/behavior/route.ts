@@ -1,8 +1,6 @@
-// app/api/teacher/behavior/route.ts
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import prisma from "@/lib/prisma";
-import type { Prisma } from "@prisma/client";
 
 export async function POST(request: Request) {
   try {
@@ -34,7 +32,7 @@ export async function POST(request: Request) {
         severity: severity || null,
         uploadedBy: session.user.id,
         studentId: studentId,
-      } as Prisma.BehaviorReportUncheckedCreateInput,
+      },
     });
 
     return NextResponse.json({ success: true, behavior });

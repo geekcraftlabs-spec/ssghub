@@ -1,20 +1,16 @@
-// app/api/teacher/upload-material/route.ts
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import prisma from "@/lib/prisma";
 import { uploadToSupabase } from "@/lib/supabase";
-import type { Prisma } from "@prisma/client";
 
 export async function POST(request: Request) {
   try {
     const session = await auth();
 
-    // 🔐 Auth check
     if (!session?.user || session.user.role !== "TEACHER") {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // 🚨 Prevent undefined uploader
     if (!session.user.id) {
       return NextResponse.json({ error: "User ID missing in session" }, { status: 401 });
     }
@@ -43,7 +39,7 @@ export async function POST(request: Request) {
         title,
         fileUrl,
         uploadedBy: session.user.id,
-      } as Prisma.MaterialUncheckedCreateInput,
+      },
     });
 
     return NextResponse.json({ success: true, material });
